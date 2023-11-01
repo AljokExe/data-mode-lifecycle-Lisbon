@@ -19,7 +19,11 @@ def save_results(params: dict, metrics: dict) -> None:
     - (unit 03 only) if MODEL_TARGET='mlflow', also persist them on MLflow
     """
     if MODEL_TARGET == "mlflow":
-        pass  # YOUR CODE HERE
+        if params is not None:
+            mlflow.log_params(params)
+        if metrics is not None:
+            mlflow.log_metrics(metrics)
+            print("✅ Results saved on mlflow")
 
     timestamp = time.strftime("%Y%m%d-%H%M%S")
 
