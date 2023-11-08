@@ -257,4 +257,3 @@ if __name__ == '__main__':
     train(min_date='2009-01-01', max_date='2015-01-01')
     evaluate(min_date='2009-01-01', max_date='2015-01-01')
     pred()
-g
