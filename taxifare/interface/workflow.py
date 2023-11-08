@@ -46,9 +46,9 @@ def train_flow():
 
     # Define the orchestration graph ("DAG")
     split_ratio=0.2
-    preprocess_future = preprocess_new_data(min_date,max_date).submit()
-    evaluate_future = evaluate_production_model(min_date,max_date).submit(wait_for=[preprocess_future]) # <-- task2 starts only after task1
-    re_train_future = re_train(min_date,max_date,split_ratio).submit(wait_for=[preprocess_future,evaluate_future])
+    preprocess_future = preprocess_new_data().submit(min_date,max_date)
+    evaluate_future = evaluate_production_model().submit(min_date,max_date,wait_for=[preprocess_future]) # <-- task2 starts only after task1
+    re_train_future = re_train().submit(min_date,max_date,split_ratio,wait_for=[preprocess_future,evaluate_future])
     # Compute your results as actual python object
     preprocess_result = preprocess_future.result()
     evaluate_result = evaluate_future.result()
@@ -56,7 +56,7 @@ def train_flow():
 
     # Do something with the results (e.g. compare them)
     if re_train_result < evaluate_result:
-        transition_model_future=transition_model('Staging','Production').submit(wait_for=[preprocess_future,evaluate_future,re_train_future])
+        transition_model_future=transition_model().submit('Staging','Production',wait_for=[preprocess_future,evaluate_future,re_train_future])
     return
 
 
