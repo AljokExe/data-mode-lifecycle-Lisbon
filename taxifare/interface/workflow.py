@@ -11,23 +11,27 @@ from taxifare.params import *
 
 @task
 def preprocess_new_data(min_date: str, max_date: str):
-    preprocessed_month=preprocess(min_date, max_date)
-    return preprocessed_month
+    # $CHA_BEGIN
+    return preprocess(min_date=min_date, max_date=max_date)
+    # $CHA_END
 
 @task
 def evaluate_production_model(min_date: str, max_date: str):
-    old_mae=evaluate(min_date,max_date)
-    return old_mae
+    # $CHA_BEGIN
+    return evaluate(min_date=min_date, max_date=max_date)
+    # $CHA_END
 
 @task
 def re_train(min_date: str, max_date: str, split_ratio: str):
-    new_mae=train(min_date,max_date,split_ratio)
-    return new_mae
+    # $CHA_BEGIN
+    return train(min_date=min_date, max_date=max_date, split_ratio=split_ratio)
+    # $CHA_END
 
 @task
 def transition_model(current_stage: str, new_stage: str):
-    ml_flow=mlflow_transition_model(current_stage,new_stage)
-    return
+    # $CHA_BEGIN
+    return mlflow_transition_model(current_stage=current_stage, new_stage=new_stage)
+    # $CHA_END
 
 
 @flow(name=PREFECT_FLOW_NAME)
