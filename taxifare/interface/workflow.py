@@ -33,6 +33,24 @@ def transition_model(current_stage: str, new_stage: str):
     return mlflow_transition_model(current_stage=current_stage, new_stage=new_stage)
     # $CHA_END
 
+@task
+def notify(old_mae, new_mae):
+    """
+    Notify about the performance
+    """
+    base_url = 'https://wagon-chat.herokuapp.com'
+    channel = 'ALJOKE_BATCH_NUMBER' # Change to your batch number
+    url = f"{base_url}/{channel}/messages"
+    author = 'aljoke' # Change this to your github nickname
+    if new_mae < old_mae and new_mae < 2.5:
+        content = f"🚀 New model replacing old in production with MAE: {new_mae} the Old MAE was: {old_mae}"
+    elif old_mae < 2.5:
+        content = f"✅ Old model still good enough: Old MAE: {old_mae} - New MAE: {new_mae}"
+    else:
+        content = f"🚨 No model good enough: Old MAE: {old_mae} - New MAE: {new_mae}"
+    data = dict(author=author, content=content)
+    response = requests.post(url, data=data)
+    response.raise_for_status()
 
 @flow(name=PREFECT_FLOW_NAME)
 def train_flow():
@@ -48,20 +66,23 @@ def train_flow():
     min_date = EVALUATION_START_DATE
     max_date = str(datetime.strptime(min_date, "%Y-%m-%d") + relativedelta(months=1)).split()[0]
 
-    # Define the orchestration graph ("DAG")
-    split_ratio=0.2
-    preprocess_future = preprocess_new_data().submit(min_date,max_date)
-    evaluate_future = evaluate_production_model().submit(min_date,max_date,wait_for=[preprocess_future]) # <-- task2 starts only after task1
-    re_train_future = re_train().submit(min_date,max_date,split_ratio,wait_for=[preprocess_future,evaluate_future])
-    # Compute your results as actual python object
-    preprocess_result = preprocess_future.result()
-    evaluate_result = evaluate_future.result()
-    re_train_result = re_train_future.result()
+    # $CHA_BEGIN
+    preprocessed = preprocess_new_data.submit(min_date=min_date, max_date=max_date)
 
-    # Do something with the results (e.g. compare them)
-    if re_train_result < evaluate_result:
-        transition_model_future=transition_model().submit('Staging','Production',wait_for=[preprocess_future,evaluate_future,re_train_future])
-    return
+    old_mae = evaluate_production_model.submit(min_date=min_date, max_date=max_date, wait_for=[preprocessed])
+    new_mae = re_train.submit(min_date=min_date, max_date=max_date, split_ratio = 0.2, wait_for=[preprocessed])
+
+    old_mae = old_mae.result()
+    new_mae = new_mae.result()
+
+    if new_mae < old_mae:
+        print(f"🚀 New model replacing old in production with MAE: {new_mae} the Old MAE was: {old_mae}")
+        transition_model.submit(current_stage="Staging", new_stage="Production")
+    else:
+        print(f"🚀 Old model kept in place with MAE: {old_mae}. The new MAE was: {new_mae}")
+
+    notify.submit(old_mae, new_mae)
+    # $CHA_END
 
 
 
