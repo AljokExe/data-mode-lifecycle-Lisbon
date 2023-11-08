@@ -11,19 +11,23 @@ from taxifare.params import *
 
 @task
 def preprocess_new_data(min_date: str, max_date: str):
-    pass  # YOUR CODE HERE
+    preprocessed_month=preprocess(min_date, max_date)
+    return preprocessed_month
 
 @task
 def evaluate_production_model(min_date: str, max_date: str):
-    pass  # YOUR CODE HERE
+    old_mae=evaluate(min_date,max_date)
+    return old_mae
 
 @task
 def re_train(min_date: str, max_date: str, split_ratio: str):
-    pass  # YOUR CODE HERE
+    new_mae=train(min_date,max_date,split_ratio)
+    return new_mae
 
 @task
 def transition_model(current_stage: str, new_stage: str):
-    pass  # YOUR CODE HERE
+    ml_flow=mlflow_transition_model(current_stage,new_stage)
+    return
 
 
 @flow(name=PREFECT_FLOW_NAME)
@@ -40,7 +44,23 @@ def train_flow():
     min_date = EVALUATION_START_DATE
     max_date = str(datetime.strptime(min_date, "%Y-%m-%d") + relativedelta(months=1)).split()[0]
 
-    pass  # YOUR CODE HERE
+    # Define the orchestration graph ("DAG")
+    split_ratio=0.2
+    preprocess_future = preprocess_new_data(min_date,max_date).submit()
+    evaluate_future = evaluate_production_model(min_date,max_date).submit(wait_for=[preprocess_future]) # <-- task2 starts only after task1
+    re_train_future = re_train(min_date,max_date,split_ratio).submit(wait_for=[preprocess_future,evaluate_future])
+    # Compute your results as actual python object
+    preprocess_result = preprocess_future.result()
+    evaluate_result = evaluate_future.result()
+    re_train_result = re_train_future.result()
+
+    # Do something with the results (e.g. compare them)
+    if re_train_result < evaluate_result:
+        transition_model_future=transition_model('Staging','Production').submit(wait_for=[preprocess_future,evaluate_future,re_train_future])
+    return
+
+
 
 if __name__ == "__main__":
+    # Actually launch your workflow
     train_flow()
