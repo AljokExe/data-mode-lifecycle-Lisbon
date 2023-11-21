@@ -19,11 +19,13 @@ def save_results(params: dict, metrics: dict) -> None:
     - (unit 03 only) if MODEL_TARGET='mlflow', also persist them on MLflow
     """
     if MODEL_TARGET == "mlflow":
+        # $CHA_BEGIN
         if params is not None:
             mlflow.log_params(params)
         if metrics is not None:
             mlflow.log_metrics(metrics)
-            print("✅ Results saved on mlflow")
+        print("✅ Results saved on MLflow")
+        # $CHA_END
 
     timestamp = time.strftime("%Y%m%d-%H%M%S")
 
@@ -71,11 +73,17 @@ def save_model(model: keras.Model = None) -> None:
         return None
 
     if MODEL_TARGET == "mlflow":
-        mlflow.tensorflow.log_model(model=model,
-                        artifact_path="model",
-                        registered_model_name=MLFLOW_MODEL_NAME
-                        )
-        print("✅ Model saved to mlflow")
+        # $CHA_BEGIN
+        mlflow.tensorflow.log_model(
+            model=model,
+            artifact_path="model",
+            registered_model_name=MLFLOW_MODEL_NAME
+        )
+
+        print("✅ Model saved to MLflow")
+
+        return None
+        # $CHA_END
 
     return None
 
@@ -137,22 +145,26 @@ def load_model(stage="Production") -> keras.Model:
         print(Fore.BLUE + f"\nLoad [{stage}] model from MLflow..." + Style.RESET_ALL)
 
         # Load model from MLflow
+        model = None
+        # $CHA_BEGIN
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
         client = MlflowClient()
 
         try:
             model_versions = client.get_latest_versions(name=MLFLOW_MODEL_NAME, stages=[stage])
             model_uri = model_versions[0].source
+
             assert model_uri is not None
         except:
             print(f"\n❌ No model found with name {MLFLOW_MODEL_NAME} in stage {stage}")
+
             return None
 
         model = mlflow.tensorflow.load_model(model_uri=model_uri)
 
-        print("✅ model loaded from mlflow")
+        print("✅ Model loaded from MLflow")
+        # $CHA_END
         return model
-
     else:
         return None
 
